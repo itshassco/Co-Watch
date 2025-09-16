@@ -844,8 +844,8 @@ export default function Home() {
         minHeight: isMobile && isLandscape ? '100vh' : '100vh',
         width: isMobile && isLandscape ? '100vw' : '100%',
         // Mobile fullscreen styles
-        ...(isMobile && isFullscreen && {
-          position: 'fixed',
+        ...(isMobile && isFullscreen ? {
+          position: 'fixed' as const,
           top: 0,
           left: 0,
           right: 0,
@@ -853,7 +853,7 @@ export default function Home() {
           zIndex: 9999,
           height: '100vh',
           width: '100vw'
-        })
+        } : {})
       }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
