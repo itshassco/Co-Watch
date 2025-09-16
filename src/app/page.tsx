@@ -187,7 +187,26 @@ export default function Home() {
             setTimerDuration(5 * 60);
             setTimeLeft(5 * 60);
           }
+        } else {
+          // Timer is still running, resume it
+          setIsRunning(true);
+          setIsPaused(false);
+          setStartTime(Date.now()); // Update start time to current time
         }
+      }
+      
+      // Also restore paused state if timer was paused
+      const savedIsPaused = localStorage.getItem('isPaused') === 'true';
+      if (savedIsPaused && !savedIsRunning) {
+        setIsPaused(true);
+        setIsRunning(false);
+        // Ensure timeLeft is restored for paused timer
+        setTimeLeft(savedTimeLeft);
+        // Also restore timer duration and type for paused timer
+        const savedTimerDuration = parseInt(localStorage.getItem('timerDuration') || '1500');
+        const savedTimerType = localStorage.getItem('timerType') as 'focus' | 'shortBreak' | 'longBreak';
+        setTimerDuration(savedTimerDuration);
+        if (savedTimerType) setTimerType(savedTimerType);
       }
       
       setIsLoaded(true);
@@ -676,7 +695,7 @@ export default function Home() {
     letterSpacing: '-0.06em'
   };
 
-  if (!isLoaded) {
+  if (!isLoaded || !isClient) {
     // Show mobile portrait layout for loading screen on mobile
     if (isMobile) {
       return (
@@ -1402,6 +1421,7 @@ export default function Home() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.95 }}
           transition={{ type: "spring", stiffness: 300, damping: 25, mass: 1 }}
+          suppressHydrationWarning={true}
         >
           <SlidingNumber 
             number={hours} 
@@ -1533,6 +1553,7 @@ export default function Home() {
           textAlign: 'center',
           color: backgroundType === 'dark' ? 'white' : 'black'
         }}
+        suppressHydrationWarning={true}
       >
         {formatDate(time)}
       </div>
