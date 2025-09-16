@@ -10,7 +10,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'clock' | 'timer'>('clock');
   const [time, setTime] = useState(new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [backgroundColor, setBackgroundColor] = useState('#DFF0C4');
+  const [backgroundColor, setBackgroundColor] = useState('#EBEBEB');
   const [backgroundType, setBackgroundType] = useState<'solid' | 'gradient' | 'dark'>('solid');
   const [showButtons, setShowButtons] = useState(false);
   const [mouseTimeout, setMouseTimeout] = useState<NodeJS.Timeout | null>(null);
@@ -671,7 +671,6 @@ export default function Home() {
   }
 
   const clockStyle = {
-    fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
     fontSize: isMobile && isLandscape ? 'clamp(80px, 8vw, 200px)' : 'clamp(120px, 12vw, 300px)',
     fontWeight: '700',
     letterSpacing: '-0.06em'
@@ -684,10 +683,29 @@ export default function Home() {
         <div 
           className="min-h-screen flex flex-col items-center justify-center" 
           style={{ 
-            background: '#DFF0C4',
+            background: backgroundType === 'dark' 
+              ? '#1a1a1a'
+              : (backgroundType === 'gradient' ? 'transparent' : backgroundColor),
             padding: '20px 16px'
           }}
         >
+          {/* Gradient overlay */}
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: backgroundType === 'dark'
+                ? 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+                : 'linear-gradient(180deg, #3477DF 0%, #738FE3 50%, #ACC2F5 100%)',
+              opacity: backgroundType === 'gradient' || backgroundType === 'dark' ? 1 : 0,
+              transition: 'opacity 0.3s ease-in-out',
+              pointerEvents: 'none',
+              zIndex: -1
+            }}
+          />
           {/* Icon */}
           <div 
             className="mb-8"
@@ -723,11 +741,10 @@ export default function Home() {
           <div 
             className="mb-1"
             style={{
-              fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
               fontSize: 'clamp(32px, 8vw, 48px)',
               fontWeight: '900',
               letterSpacing: '-0.02em',
-              color: 'black',
+              color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'white' : 'black',
               textAlign: 'center'
             }}
           >
@@ -737,10 +754,9 @@ export default function Home() {
           {/* Loading indicator */}
           <div 
             style={{
-              fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
               fontSize: 'clamp(16px, 3vw, 20px)',
               fontWeight: '600',
-              color: 'rgba(0, 0, 0, 0.6)',
+              color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
               textAlign: 'center'
             }}
           >
@@ -753,19 +769,37 @@ export default function Home() {
     // Desktop loading screen
     return (
       <div 
-        className="min-h-screen flex items-center justify-center" 
+        className="min-h-screen flex items-center justify-center relative" 
         style={{ 
-          background: '#DFF0C4'
+          background: backgroundType === 'dark' 
+            ? '#1a1a1a'
+            : (backgroundType === 'gradient' ? 'transparent' : backgroundColor)
         }}
       >
-        <div 
-          className="text-black flex items-center" 
+        {/* Gradient overlay */}
+        <div
           style={{
-            fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: backgroundType === 'dark'
+              ? 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+              : 'linear-gradient(180deg, #3477DF 0%, #738FE3 50%, #ACC2F5 100%)',
+            opacity: backgroundType === 'gradient' || backgroundType === 'dark' ? 1 : 0,
+            transition: 'opacity 0.3s ease-in-out',
+            pointerEvents: 'none',
+            zIndex: -1
+          }}
+        />
+        <div 
+          className="flex items-center" 
+          style={{
             fontSize: 'clamp(120px, 12vw, 300px)',
             fontWeight: '700',
             letterSpacing: '-0.06em',
-            color: 'black'
+            color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'white' : 'black'
           }}
         >
           CO&apos;WATCH!
@@ -780,7 +814,7 @@ export default function Home() {
       <div 
         className="min-h-screen flex flex-col items-center justify-center" 
         style={{ 
-          background: '#DFF0C4', // Light green background
+          background: '#EBEBEB', // Light gray background
           padding: '20px 16px'
         }}
       >
@@ -819,7 +853,6 @@ export default function Home() {
         <div 
           className="mb-1"
           style={{
-            fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
             fontSize: 'clamp(32px, 8vw, 48px)',
             fontWeight: '900',
             letterSpacing: '-0.02em',
@@ -833,7 +866,6 @@ export default function Home() {
         {/* Rotate Phone Instruction */}
         <div 
           style={{
-            fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
             fontSize: 'clamp(18px, 4vw, 24px)',
             fontWeight: '600',
             color: 'rgba(0, 0, 0, 0.7)',
@@ -900,7 +932,6 @@ export default function Home() {
         className="absolute top-8 left-1/2 transform -translate-x-1/2"
         style={{
           color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'white' : 'black',
-          fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
           fontSize: 'clamp(20px, 2.5vw, 40px)',
           fontWeight: '900',
           transition: 'color 0.3s ease-in-out',
@@ -976,7 +1007,6 @@ export default function Home() {
             className="relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none"
             style={{
               color: backgroundType === 'gradient' && activeTab !== 'clock' ? 'white' : (backgroundType === 'dark' ? 'white' : 'black'),
-              fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
               fontSize: '16px',
               fontWeight: '600',
               padding: '6px 12px 4px 12px',
@@ -994,7 +1024,6 @@ export default function Home() {
             className="relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none"
             style={{
               color: backgroundType === 'gradient' && activeTab !== 'timer' ? 'white' : (backgroundType === 'dark' ? 'white' : 'black'),
-              fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
               fontSize: '16px',
               fontWeight: '600',
               padding: '6px 12px 4px 12px',
@@ -1154,7 +1183,7 @@ export default function Home() {
                 delay: 0.1
               }}
               onClick={() => {
-                setBackgroundColor('#DFF0C4');
+                setBackgroundColor('#EBEBEB');
                 setBackgroundType('solid');
               }}
               className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
@@ -1170,14 +1199,14 @@ export default function Home() {
                 backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
                 position: 'relative'
               }}
-              title="Light Green Background"
+              title="Light Gray Background"
             >
               <div 
                 style={{
-                  width: backgroundColor === '#DFF0C4' ? '30px' : '20px',
-                  height: backgroundColor === '#DFF0C4' ? '30px' : '20px',
+                  width: backgroundColor === '#EBEBEB' ? '30px' : '20px',
+                  height: backgroundColor === '#EBEBEB' ? '30px' : '20px',
                   borderRadius: '50%',
-                  backgroundColor: '#DFF0C4',
+                  backgroundColor: '#EBEBEB',
                   position: 'absolute',
                   top: '50%',
                   left: '50%',
@@ -1406,7 +1435,6 @@ export default function Home() {
           <div 
             className="flex items-center mb-8 select-none"
             style={{
-              fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
               fontSize: isMobile && isLandscape ? 'clamp(80px, 8vw, 200px)' : 'clamp(120px, 12vw, 300px)',
               fontWeight: '700',
               letterSpacing: '-0.06em',
@@ -1453,7 +1481,6 @@ export default function Home() {
           opacity: isFullscreen ? (showButtons ? 1 : 0) : 1,
           visibility: isFullscreen ? (showButtons ? 'visible' : 'hidden') : 'visible',
           transition: 'opacity 0.3s ease-in-out, visibility 0.3s ease-in-out',
-          fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
           fontSize: '16px',
           fontWeight: '600',
           padding: '6px 18px 4px 18px',
@@ -1500,7 +1527,6 @@ export default function Home() {
           opacity: isFullscreen ? (showButtons ? 1 : 0) : 1,
           visibility: isFullscreen ? (showButtons ? 'visible' : 'hidden') : 'visible',
           transition: 'opacity 0.3s ease-in-out, visibility 0.3s ease-in-out',
-          fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
           fontSize: '16px',
           fontWeight: '600',
           padding: '6px 18px 4px 18px',
@@ -1544,7 +1570,6 @@ export default function Home() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
               fontSize: '16px',
               fontWeight: '600',
               padding: '6px 18px 4px 18px',
@@ -1572,7 +1597,6 @@ export default function Home() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
               fontSize: '16px',
               fontWeight: '600',
               padding: '6px 18px 4px 18px',
@@ -1600,7 +1624,6 @@ export default function Home() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
               fontSize: '16px',
               fontWeight: '600',
               padding: '6px 18px 4px 18px',
@@ -1687,7 +1710,6 @@ export default function Home() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
                 fontSize: '16px',
                 fontWeight: '600',
                 padding: '6px 18px 4px 18px',
