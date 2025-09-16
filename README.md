@@ -1,6 +1,6 @@
-# Rwatch
+# Co-Watch
 
-A modern Next.js application built with TypeScript, Tailwind CSS, and the latest web technologies.
+Stylish focus timer app featuring both a clock and timer. It boasts a clean, modern design with smooth animations and various themes.
 
 ## Features
 
@@ -10,6 +10,8 @@ A modern Next.js application built with TypeScript, Tailwind CSS, and the latest
 - 🌙 **Dark mode** support
 - 📱 **Responsive design**
 - 🔍 **ESLint** for code quality
+- ⏰ **Focus Timer** functionality
+- 🎨 **Smooth animations** and modern UI
 
 ## Getting Started
 
@@ -32,12 +34,15 @@ You can start editing the page by modifying `src/app/page.tsx`. The page auto-up
 ## Project Structure
 
 ```
-rwatch/
+Co-Watch/
 ├── src/
-│   └── app/
-│       ├── page.tsx          # Home page
-│       ├── layout.tsx        # Root layout
-│       └── globals.css       # Global styles
+│   ├── app/
+│   │   ├── page.tsx          # Home page
+│   │   ├── layout.tsx        # Root layout
+│   │   └── globals.css       # Global styles
+│   └── components/
+│       └── ui/
+│           └── sliding-number.tsx  # Sliding number component
 ├── public/                   # Static assets
 ├── package.json             # Dependencies and scripts
 └── tailwind.config.ts       # Tailwind configuration
