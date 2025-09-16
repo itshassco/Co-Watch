@@ -230,9 +230,9 @@ export default function Home() {
     const handleFullscreenChange = () => {
       const isCurrentlyFullscreen = !!(
         document.fullscreenElement ||
-        (document as any).webkitFullscreenElement ||
-        (document as any).mozFullScreenElement ||
-        (document as any).msFullscreenElement
+        (document as Document & { webkitFullscreenElement?: Element }).webkitFullscreenElement ||
+        (document as Document & { mozFullScreenElement?: Element }).mozFullScreenElement ||
+        (document as Document & { msFullscreenElement?: Element }).msFullscreenElement
       );
       
       setIsFullscreen(isCurrentlyFullscreen);
@@ -333,19 +333,19 @@ export default function Home() {
         if (isMobile) {
           // Check if PWA is already installed
           const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                              (window.navigator as any).standalone === true;
+                              (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
           
           if (isStandalone) {
             // PWA is installed, try fullscreen
             try {
               if (document.documentElement.requestFullscreen) {
                 await document.documentElement.requestFullscreen();
-              } else if ((document.documentElement as any).webkitRequestFullscreen) {
-                await (document.documentElement as any).webkitRequestFullscreen();
-              } else if ((document.documentElement as any).mozRequestFullScreen) {
-                await (document.documentElement as any).mozRequestFullScreen();
-              } else if ((document.documentElement as any).msRequestFullscreen) {
-                await (document.documentElement as any).msRequestFullscreen();
+              } else if ((document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen) {
+                await (document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen!();
+              } else if ((document.documentElement as HTMLElement & { mozRequestFullScreen?: () => Promise<void> }).mozRequestFullScreen) {
+                await (document.documentElement as HTMLElement & { mozRequestFullScreen?: () => Promise<void> }).mozRequestFullScreen!();
+              } else if ((document.documentElement as HTMLElement & { msRequestFullscreen?: () => Promise<void> }).msRequestFullscreen) {
+                await (document.documentElement as HTMLElement & { msRequestFullscreen?: () => Promise<void> }).msRequestFullscreen!();
               }
               
               setIsFullscreen(true);
@@ -377,12 +377,12 @@ export default function Home() {
             try {
               if (document.documentElement.requestFullscreen) {
                 await document.documentElement.requestFullscreen();
-              } else if ((document.documentElement as any).webkitRequestFullscreen) {
-                await (document.documentElement as any).webkitRequestFullscreen();
-              } else if ((document.documentElement as any).mozRequestFullScreen) {
-                await (document.documentElement as any).mozRequestFullScreen();
-              } else if ((document.documentElement as any).msRequestFullscreen) {
-                await (document.documentElement as any).msRequestFullscreen();
+              } else if ((document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen) {
+                await (document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen!();
+              } else if ((document.documentElement as HTMLElement & { mozRequestFullScreen?: () => Promise<void> }).mozRequestFullScreen) {
+                await (document.documentElement as HTMLElement & { mozRequestFullScreen?: () => Promise<void> }).mozRequestFullScreen!();
+              } else if ((document.documentElement as HTMLElement & { msRequestFullscreen?: () => Promise<void> }).msRequestFullscreen) {
+                await (document.documentElement as HTMLElement & { msRequestFullscreen?: () => Promise<void> }).msRequestFullscreen!();
               }
             } catch (error) {
               console.log('Mobile fullscreen API failed:', error);
@@ -403,12 +403,12 @@ export default function Home() {
           // Desktop fullscreen
           if (document.documentElement.requestFullscreen) {
             await document.documentElement.requestFullscreen();
-          } else if ((document.documentElement as any).webkitRequestFullscreen) {
-            await (document.documentElement as any).webkitRequestFullscreen();
-          } else if ((document.documentElement as any).mozRequestFullScreen) {
-            await (document.documentElement as any).mozRequestFullScreen();
-          } else if ((document.documentElement as any).msRequestFullscreen) {
-            await (document.documentElement as any).msRequestFullscreen();
+          } else if ((document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen) {
+            await (document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen!();
+          } else if ((document.documentElement as HTMLElement & { mozRequestFullScreen?: () => Promise<void> }).mozRequestFullScreen) {
+            await (document.documentElement as HTMLElement & { mozRequestFullScreen?: () => Promise<void> }).mozRequestFullScreen!();
+          } else if ((document.documentElement as HTMLElement & { msRequestFullscreen?: () => Promise<void> }).msRequestFullscreen) {
+            await (document.documentElement as HTMLElement & { msRequestFullscreen?: () => Promise<void> }).msRequestFullscreen!();
           }
           
           setIsFullscreen(true);
@@ -428,12 +428,12 @@ export default function Home() {
       try {
         if (document.exitFullscreen) {
           await document.exitFullscreen();
-        } else if ((document as any).webkitExitFullscreen) {
-          await (document as any).webkitExitFullscreen();
-        } else if ((document as any).mozCancelFullScreen) {
-          await (document as any).mozCancelFullScreen();
-        } else if ((document as any).msExitFullscreen) {
-          await (document as any).msExitFullscreen();
+        } else if ((document as Document & { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen) {
+          await (document as Document & { webkitExitFullscreen?: () => Promise<void> }).webkitExitFullscreen!();
+        } else if ((document as Document & { mozCancelFullScreen?: () => Promise<void> }).mozCancelFullScreen) {
+          await (document as Document & { mozCancelFullScreen?: () => Promise<void> }).mozCancelFullScreen!();
+        } else if ((document as Document & { msExitFullscreen?: () => Promise<void> }).msExitFullscreen) {
+          await (document as Document & { msExitFullscreen?: () => Promise<void> }).msExitFullscreen!();
         }
       } catch (error) {
         console.log('Exit fullscreen failed:', error);
