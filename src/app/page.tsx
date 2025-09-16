@@ -1,26 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SlidingNumber } from '@/components/ui/sliding-number';
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const [activeTab, setActiveTab] = useState<'clock' | 'timer'>('clock');
   const [time, setTime] = useState(new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [backgroundColor, setBackgroundColor] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('backgroundColor') || '#DFF0C4';
-    }
-    return '#DFF0C4';
-  });
-  const [backgroundType, setBackgroundType] = useState<'solid' | 'gradient' | 'dark'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('backgroundType') as 'solid' | 'gradient' | 'dark') || 'solid';
-    }
-    return 'solid';
-  });
+  const [backgroundColor, setBackgroundColor] = useState('#DFF0C4');
+  const [backgroundType, setBackgroundType] = useState<'solid' | 'gradient' | 'dark'>('solid');
   const [showButtons, setShowButtons] = useState(false);
   const [mouseTimeout, setMouseTimeout] = useState<NodeJS.Timeout | null>(null);
   const [weatherTemp, setWeatherTemp] = useState(22);
@@ -29,50 +20,16 @@ export default function Home() {
   const [weatherLocation, setWeatherLocation] = useState<string>('');
   const [showCursor, setShowCursor] = useState(true);
   const [showThemeButtons, setShowThemeButtons] = useState(false);
-  const [showSeconds, setShowSeconds] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('showSeconds') !== 'false';
-    }
-    return true;
-  });
+  const [showSeconds, setShowSeconds] = useState(true);
+  const [orientationKey, setOrientationKey] = useState(0);
   
   // Focus Timer states
-  const [timerDuration, setTimerDuration] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return parseInt(localStorage.getItem('timerDuration') || '1500'); // 25 minutes default
-    }
-    return 25 * 60;
-  });
-  const [timeLeft, setTimeLeft] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return parseInt(localStorage.getItem('timeLeft') || '1500');
-    }
-    return 25 * 60;
-  });
-  const [isRunning, setIsRunning] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('isRunning') === 'true';
-    }
-    return false;
-  });
-  const [isPaused, setIsPaused] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('isPaused') === 'true';
-    }
-    return false;
-  });
-  const [startTime, setStartTime] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return parseInt(localStorage.getItem('startTime') || '0');
-    }
-    return 0;
-  });
-  const [timerType, setTimerType] = useState<'focus' | 'shortBreak' | 'longBreak'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('timerType') as 'focus' | 'shortBreak' | 'longBreak') || 'focus';
-    }
-    return 'focus';
-  });
+  const [timerDuration, setTimerDuration] = useState(25 * 60);
+  const [timeLeft, setTimeLeft] = useState(25 * 60);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [startTime, setStartTime] = useState(0);
+  const [timerType, setTimerType] = useState<'focus' | 'shortBreak' | 'longBreak'>('focus');
   
   // Tab background dimensions
   const [tabDimensions, setTabDimensions] = useState({ clock: { width: 0, left: 0, height: 0, top: 0 }, timer: { width: 0, left: 0, height: 0, top: 0 } });
@@ -116,7 +73,7 @@ export default function Home() {
   };
 
   // Get user location from timezone and fetch weather
-  const getLocationAndWeather = () => {
+  const getLocationAndWeather = useCallback(() => {
     try {
       // Get timezone from browser
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -173,7 +130,12 @@ export default function Home() {
       // Fallback to London
       fetchWeather(51.5074, -0.1278);
     }
-  };
+  }, []);
+
+  // Set client-side state to prevent hydration issues
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Load saved state on mount
   useEffect(() => {
@@ -200,7 +162,8 @@ export default function Home() {
         // If timer finished while away, auto-switch to break
         if (remaining === 0) {
           setIsRunning(false);
-          if (timerType === 'focus') {
+          const savedTimerType = localStorage.getItem('timerType') as 'focus' | 'shortBreak' | 'longBreak';
+          if (savedTimerType === 'focus') {
             setTimerType('shortBreak');
             setTimerDuration(5 * 60);
             setTimeLeft(5 * 60);
@@ -215,7 +178,7 @@ export default function Home() {
     } else {
       setIsLoaded(true);
     }
-  }, []);
+  }, [getLocationAndWeather]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -232,7 +195,7 @@ export default function Home() {
     }, 10 * 60 * 1000); // 10 minutes
 
     return () => clearInterval(weatherTimer);
-  }, []);
+  }, [getLocationAndWeather]);
 
   // Save activeTab to localStorage
   useEffect(() => {
@@ -262,6 +225,36 @@ export default function Home() {
     }
   }, [showSeconds]);
 
+  // Handle fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      
+      setIsFullscreen(isCurrentlyFullscreen);
+      if (!isCurrentlyFullscreen) {
+        setShowButtons(true);
+        setShowCursor(true);
+      }
+    };
+
+    // Add event listeners for different vendor prefixes
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, []);
 
   // Save timer state to localStorage
   useEffect(() => {
@@ -332,13 +325,120 @@ export default function Home() {
   const ampm = time.getHours() >= 12 ? 'PM' : 'AM';
 
   const toggleFullscreen = async () => {
-    if (!document.fullscreenElement) {
-      await document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
-      setShowButtons(false);
-      setShowCursor(false);
+    console.log('Fullscreen button clicked!', { isMobile, isFullscreen });
+    
+    if (!isFullscreen) {
+      // Enter fullscreen
+      try {
+        if (isMobile) {
+          // Check if PWA is already installed
+          const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                              (window.navigator as any).standalone === true;
+          
+          if (isStandalone) {
+            // PWA is installed, try fullscreen
+            try {
+              if (document.documentElement.requestFullscreen) {
+                await document.documentElement.requestFullscreen();
+              } else if ((document.documentElement as any).webkitRequestFullscreen) {
+                await (document.documentElement as any).webkitRequestFullscreen();
+              } else if ((document.documentElement as any).mozRequestFullScreen) {
+                await (document.documentElement as any).mozRequestFullScreen();
+              } else if ((document.documentElement as any).msRequestFullscreen) {
+                await (document.documentElement as any).msRequestFullscreen();
+              }
+              
+              setIsFullscreen(true);
+              setShowButtons(false);
+              setShowCursor(false);
+            } catch (error) {
+              console.log('PWA fullscreen failed:', error);
+              // Fallback to overlay mode
+              setIsFullscreen(true);
+              setShowButtons(false);
+              setShowCursor(false);
+            }
+          } else {
+            // Show PWA installation instructions
+            const userAgent = navigator.userAgent;
+            let instructions = '';
+            
+            if (userAgent.includes('iPhone') || userAgent.includes('iPad')) {
+              instructions = `For true fullscreen experience:\n\n1. Tap the Share button (square with arrow up)\n2. Scroll down and tap "Add to Home Screen"\n3. Tap "Add" to install the app\n4. Open CO'WATCH! from your home screen\n\nThis will give you true fullscreen like a native app!`;
+            } else if (userAgent.includes('Android')) {
+              instructions = `For true fullscreen experience:\n\n1. Tap the menu (3 dots) in your browser\n2. Tap "Add to Home screen" or "Install App"\n3. Tap "Add" or "Install" to install the app\n4. Open CO'WATCH! from your home screen\n\nThis will give you true fullscreen like a native app!`;
+            } else {
+              instructions = `For true fullscreen experience:\n\n1. Look for "Install App" or "Add to Home Screen" in your browser menu\n2. Install the app to your device\n3. Open CO'WATCH! from your home screen\n\nThis will give you true fullscreen like a native app!`;
+            }
+            
+            alert(instructions);
+            
+            // Still try the fullscreen API
+            try {
+              if (document.documentElement.requestFullscreen) {
+                await document.documentElement.requestFullscreen();
+              } else if ((document.documentElement as any).webkitRequestFullscreen) {
+                await (document.documentElement as any).webkitRequestFullscreen();
+              } else if ((document.documentElement as any).mozRequestFullScreen) {
+                await (document.documentElement as any).mozRequestFullScreen();
+              } else if ((document.documentElement as any).msRequestFullscreen) {
+                await (document.documentElement as any).msRequestFullscreen();
+              }
+            } catch (error) {
+              console.log('Mobile fullscreen API failed:', error);
+            }
+            
+            // Set overlay mode
+            setIsFullscreen(true);
+            setShowButtons(false);
+            setShowCursor(false);
+            
+            // Try to hide address bar
+            setTimeout(() => {
+              window.scrollTo(0, 1);
+            }, 100);
+          }
+          
+        } else {
+          // Desktop fullscreen
+          if (document.documentElement.requestFullscreen) {
+            await document.documentElement.requestFullscreen();
+          } else if ((document.documentElement as any).webkitRequestFullscreen) {
+            await (document.documentElement as any).webkitRequestFullscreen();
+          } else if ((document.documentElement as any).mozRequestFullScreen) {
+            await (document.documentElement as any).mozRequestFullScreen();
+          } else if ((document.documentElement as any).msRequestFullscreen) {
+            await (document.documentElement as any).msRequestFullscreen();
+          }
+          
+          setIsFullscreen(true);
+          setShowButtons(false);
+          setShowCursor(false);
+        }
+        
+      } catch (error) {
+        console.log('Fullscreen failed:', error);
+        // Fallback
+        setIsFullscreen(true);
+        setShowButtons(false);
+        setShowCursor(false);
+      }
     } else {
-      await document.exitFullscreen();
+      // Exit fullscreen
+      try {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        } else if ((document as any).mozCancelFullScreen) {
+          await (document as any).mozCancelFullScreen();
+        } else if ((document as any).msExitFullscreen) {
+          await (document as any).msExitFullscreen();
+        }
+      } catch (error) {
+        console.log('Exit fullscreen failed:', error);
+      }
+      
       setIsFullscreen(false);
       setShowButtons(true);
       setShowCursor(true);
@@ -375,6 +475,26 @@ export default function Home() {
     }
   };
 
+  const handleTouchStart = () => {
+    if (isFullscreen && isMobile) {
+      setShowButtons(true);
+      setShowCursor(true);
+      
+      // Clear existing timeout
+      if (mouseTimeout) {
+        clearTimeout(mouseTimeout);
+      }
+      
+      // Set new timeout to hide buttons after 3 seconds
+      const timeout = setTimeout(() => {
+        setShowButtons(false);
+        setShowCursor(false);
+      }, 3000);
+      
+      setMouseTimeout(timeout);
+    }
+  };
+
   // Timer functions
   const startTimer = () => {
     setIsRunning(true);
@@ -400,11 +520,6 @@ export default function Home() {
     setIsPaused(false);
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
 
   // Measure tab dimensions
   const measureTabDimensions = () => {
@@ -471,19 +586,70 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [activeTab]);
 
-  // Handle window resize
+  // Handle window resize and orientation change
   useEffect(() => {
     const handleResize = () => {
       setTimeout(measureTabDimensions, 100); // Small delay to ensure layout is updated
     };
 
+    const handleOrientationChange = () => {
+      // Force a re-render when orientation changes
+      setTimeout(() => {
+        measureTabDimensions();
+        // Force component re-render by updating orientation key
+        setOrientationKey(prev => prev + 1);
+        setTime(new Date());
+      }, 100);
+    };
+
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    // Also listen for screen orientation changes if available
+    if (window.screen && window.screen.orientation) {
+      window.screen.orientation.addEventListener('change', handleOrientationChange);
+    }
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      if (window.screen && window.screen.orientation) {
+        window.screen.orientation.removeEventListener('change', handleOrientationChange);
+      }
+    };
   }, []);
 
   // Mobile landscape optimizations
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-  const isLandscape = typeof window !== 'undefined' && window.innerHeight < window.innerWidth;
+  const isMobile = isClient && typeof window !== 'undefined' && window.innerWidth <= 768;
+  const isLandscape = isClient && typeof window !== 'undefined' && window.innerWidth > window.innerHeight;
+  const isPortrait = isClient && typeof window !== 'undefined' && window.innerHeight > window.innerWidth && window.innerWidth <= 768;
+  
+  // More reliable portrait detection using multiple methods
+  const isPortraitMode = isClient && typeof window !== 'undefined' && (
+    // Method 1: Basic dimension check
+    (window.innerHeight > window.innerWidth && window.innerWidth <= 768) ||
+    // Method 2: Screen orientation API
+    (window.screen && window.screen.orientation && (
+      window.screen.orientation.angle === 0 || 
+      window.screen.orientation.angle === 180
+    ) && window.innerWidth <= 768) ||
+    // Method 3: Media query check
+    (window.matchMedia && window.matchMedia('(orientation: portrait)').matches && window.innerWidth <= 768)
+  );
+  
+  // Debug logging
+  if (isClient && typeof window !== 'undefined') {
+    console.log('Orientation debug:', { 
+      isMobile, 
+      isLandscape, 
+      isPortrait, 
+      isPortraitMode,
+      width: window.innerWidth, 
+      height: window.innerHeight,
+      screenOrientation: window.screen?.orientation?.angle,
+      mediaQueryPortrait: window.matchMedia ? window.matchMedia('(orientation: portrait)').matches : 'N/A'
+    });
+  }
 
   const clockStyle = {
     fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
@@ -493,11 +659,84 @@ export default function Home() {
   };
 
   if (!isLoaded) {
+    // Show mobile portrait layout for loading screen on mobile
+    if (isMobile) {
+      return (
+        <div 
+          className="min-h-screen flex flex-col items-center justify-center" 
+          style={{ 
+            background: '#DFF0C4',
+            padding: '20px 16px'
+          }}
+        >
+          {/* Icon */}
+          <div 
+            className="mb-8"
+            style={{
+              width: '120px',
+              height: '120px',
+              borderRadius: '50%',
+              backgroundColor: 'white',
+              border: '1px solid rgba(0, 0, 0, 0.05)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <svg 
+              width="64" 
+              height="64" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path 
+                fillRule="evenodd" 
+                clipRule="evenodd" 
+                d="M10.2929 1.29289C10.6834 0.902369 11.3166 0.902369 11.7071 1.29289L14.7071 4.29289C15.0976 4.68342 15.0976 5.31658 14.7071 5.70711L11.7071 8.70711C11.3166 9.09763 10.6834 9.09763 10.2929 8.70711C9.90237 8.31658 9.90237 7.68342 10.2929 7.29289L11.5858 6H10C6.68629 6 4 8.68629 4 12C4 13.6352 4.65279 15.1159 5.71424 16.1991C6.10079 16.5935 6.09436 17.2267 5.6999 17.6132C5.30544 17.9998 4.6723 17.9933 4.28576 17.5989C2.87283 16.157 2 14.1794 2 12C2 7.58172 5.58172 4 10 4H11.5858L10.2929 2.70711C9.90237 2.31658 9.90237 1.68342 10.2929 1.29289ZM18.3001 6.38677C18.6946 6.00023 19.3277 6.00665 19.7142 6.40111C21.1272 7.84299 22 9.82056 22 12C22 16.4183 18.4183 20 14 20H12.4142L13.7071 21.2929C14.0976 21.6834 14.0976 22.3166 13.7071 22.7071C13.3166 23.0976 12.6834 23.0976 12.2929 22.7071L9.29289 19.7071C8.90237 19.3166 8.90237 18.6834 9.29289 18.2929L12.2929 15.2929C12.6834 14.9024 13.3166 14.9024 13.7071 15.2929C14.0976 15.6834 14.0976 16.3166 13.7071 16.7071L12.4142 18H14C17.3137 18 20 15.3137 20 12C20 10.3648 19.3472 8.88411 18.2858 7.80091C17.8992 7.40645 17.9056 6.77332 18.3001 6.38677Z" 
+                fill="black"
+              />
+            </svg>
+          </div>
+
+          {/* Co'Watch! Title */}
+          <div 
+            className="mb-1"
+            style={{
+              fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+              fontSize: 'clamp(32px, 8vw, 48px)',
+              fontWeight: '900',
+              letterSpacing: '-0.02em',
+              color: 'black',
+              textAlign: 'center'
+            }}
+          >
+            CO&apos;WATCH!
+          </div>
+
+          {/* Loading indicator */}
+          <div 
+            style={{
+              fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+              fontSize: 'clamp(16px, 3vw, 20px)',
+              fontWeight: '600',
+              color: 'rgba(0, 0, 0, 0.6)',
+              textAlign: 'center'
+            }}
+          >
+            Loading...
+          </div>
+        </div>
+      );
+    }
+
+    // Desktop loading screen
     return (
       <div 
         className="min-h-screen flex items-center justify-center" 
         style={{ 
-          background: backgroundType === 'dark' ? '#1a1a1a' : '#DFF0C4'
+          background: '#DFF0C4'
         }}
       >
         <div 
@@ -507,18 +746,94 @@ export default function Home() {
             fontSize: 'clamp(120px, 12vw, 300px)',
             fontWeight: '700',
             letterSpacing: '-0.06em',
-            color: backgroundType === 'dark' ? 'white' : 'black'
+            color: 'black'
           }}
         >
-          CO'WATCH!
+          CO&apos;WATCH!
         </div>
       </div>
     );
   }
 
+  // Mobile Portrait Screen - Show for any mobile device
+  if (isMobile) {
+    return (
+      <div 
+        className="min-h-screen flex flex-col items-center justify-center" 
+        style={{ 
+          background: '#DFF0C4', // Light green background
+          padding: '20px 16px'
+        }}
+      >
+        {/* Icon */}
+        <div 
+          className="mb-8"
+          style={{
+            width: '120px',
+            height: '120px',
+            borderRadius: '50%',
+            backgroundColor: 'white',
+            border: '1px solid rgba(0, 0, 0, 0.05)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <svg 
+            width="64" 
+            height="64" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path 
+              fillRule="evenodd" 
+              clipRule="evenodd" 
+              d="M10.2929 1.29289C10.6834 0.902369 11.3166 0.902369 11.7071 1.29289L14.7071 4.29289C15.0976 4.68342 15.0976 5.31658 14.7071 5.70711L11.7071 8.70711C11.3166 9.09763 10.6834 9.09763 10.2929 8.70711C9.90237 8.31658 9.90237 7.68342 10.2929 7.29289L11.5858 6H10C6.68629 6 4 8.68629 4 12C4 13.6352 4.65279 15.1159 5.71424 16.1991C6.10079 16.5935 6.09436 17.2267 5.6999 17.6132C5.30544 17.9998 4.6723 17.9933 4.28576 17.5989C2.87283 16.157 2 14.1794 2 12C2 7.58172 5.58172 4 10 4H11.5858L10.2929 2.70711C9.90237 2.31658 9.90237 1.68342 10.2929 1.29289ZM18.3001 6.38677C18.6946 6.00023 19.3277 6.00665 19.7142 6.40111C21.1272 7.84299 22 9.82056 22 12C22 16.4183 18.4183 20 14 20H12.4142L13.7071 21.2929C14.0976 21.6834 14.0976 22.3166 13.7071 22.7071C13.3166 23.0976 12.6834 23.0976 12.2929 22.7071L9.29289 19.7071C8.90237 19.3166 8.90237 18.6834 9.29289 18.2929L12.2929 15.2929C12.6834 14.9024 13.3166 14.9024 13.7071 15.2929C14.0976 15.6834 14.0976 16.3166 13.7071 16.7071L12.4142 18H14C17.3137 18 20 15.3137 20 12C20 10.3648 19.3472 8.88411 18.2858 7.80091C17.8992 7.40645 17.9056 6.77332 18.3001 6.38677Z" 
+              fill="black"
+            />
+          </svg>
+        </div>
+
+        {/* Co'Watch! Title */}
+        <div 
+          className="mb-1"
+          style={{
+            fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+            fontSize: 'clamp(32px, 8vw, 48px)',
+            fontWeight: '900',
+            letterSpacing: '-0.02em',
+            color: 'black',
+            textAlign: 'center'
+          }}
+        >
+          CO&apos;WATCH!
+        </div>
+
+        {/* Rotate Phone Instruction */}
+        <div 
+          style={{
+            fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
+            fontSize: 'clamp(18px, 4vw, 24px)',
+            fontWeight: '600',
+            color: 'rgba(0, 0, 0, 0.7)',
+            textAlign: 'center',
+            maxWidth: '280px',
+            lineHeight: '1.4'
+          }}
+        >
+          Rotate Your Phone
+        </div>
+      </div>
+    );
+  }
+
+
   return (
     <div 
-      className="min-h-screen flex items-center justify-center relative" 
+      key={orientationKey}
+      className={`min-h-screen flex items-center justify-center relative ${isMobile && isFullscreen ? 'mobile-fullscreen' : ''}`}
       style={{ 
         backgroundColor: backgroundType === 'dark' 
           ? '#1a1a1a'
@@ -527,10 +842,22 @@ export default function Home() {
         transition: 'background-color 0.3s ease-in-out',
         cursor: isFullscreen ? (showCursor ? 'default' : 'none') : 'default',
         minHeight: isMobile && isLandscape ? '100vh' : '100vh',
-        width: isMobile && isLandscape ? '100vw' : '100%'
+        width: isMobile && isLandscape ? '100vw' : '100%',
+        // Mobile fullscreen styles
+        ...(isMobile && isFullscreen && {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9999,
+          height: '100vh',
+          width: '100vw'
+        })
       }}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
+      onTouchStart={handleTouchStart}
     >
       {/* Gradient overlay */}
       <div
@@ -562,7 +889,7 @@ export default function Home() {
           visibility: isFullscreen ? (showButtons ? 'visible' : 'hidden') : 'visible'
         }}
       >
-        CO'WATCH!
+        CO&apos;WATCH!
       </div>
 
       {/* Top Controls Container */}
