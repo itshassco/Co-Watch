@@ -18,6 +18,8 @@ export default function Home() {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string | null>(null);
   const [weatherLocation, setWeatherLocation] = useState<string>('');
+  const [lastWeatherClick, setLastWeatherClick] = useState(0);
+  const [isWeatherDebounced, setIsWeatherDebounced] = useState(false);
   const [showCursor, setShowCursor] = useState(true);
   const [showThemeButtons, setShowThemeButtons] = useState(false);
   const [showSeconds, setShowSeconds] = useState(true);
@@ -131,6 +133,23 @@ export default function Home() {
       fetchWeather(51.5074, -0.1278);
     }
   }, []);
+
+  // Debounced weather refresh function
+  const handleWeatherClick = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastClick = now - lastWeatherClick;
+    const DEBOUNCE_DELAY = 2000; // 2 seconds delay between clicks
+    
+    if (timeSinceLastClick < DEBOUNCE_DELAY) {
+      // Show brief visual feedback that click was ignored
+      setIsWeatherDebounced(true);
+      setTimeout(() => setIsWeatherDebounced(false), 300);
+      return; // Ignore click if too soon
+    }
+    
+    setLastWeatherClick(now);
+    getLocationAndWeather();
+  }, [lastWeatherClick, getLocationAndWeather]);
 
   // Set client-side state to prevent hydration issues
   useEffect(() => {
@@ -954,7 +973,7 @@ export default function Home() {
             onClick={() => setActiveTab('clock')}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+            className="relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none"
             style={{
               color: backgroundType === 'gradient' && activeTab !== 'clock' ? 'white' : (backgroundType === 'dark' ? 'white' : 'black'),
               fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
@@ -972,7 +991,7 @@ export default function Home() {
             onClick={() => setActiveTab('timer')}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+            className="relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none"
             style={{
               color: backgroundType === 'gradient' && activeTab !== 'timer' ? 'white' : (backgroundType === 'dark' ? 'white' : 'black'),
               fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
@@ -993,7 +1012,7 @@ export default function Home() {
           onClick={() => setShowThemeButtons(!showThemeButtons)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          className="bg-white text-black transition-all duration-200"
+          className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
           style={{ 
             width: isMobile && isLandscape ? '48px' : '64px',
             height: isMobile && isLandscape ? '36px' : '48px',
@@ -1041,7 +1060,7 @@ export default function Home() {
                 setBackgroundColor('#EBEBEB');
                 setBackgroundType('solid');
               }}
-              className="bg-white text-black transition-all duration-200"
+              className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
               style={{
                 width: '48px',
                 height: '48px',
@@ -1089,7 +1108,7 @@ export default function Home() {
               onClick={() => {
                 setBackgroundType('dark');
               }}
-              className="bg-white text-black transition-all duration-200"
+              className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
               style={{
                 width: '48px',
                 height: '48px',
@@ -1138,7 +1157,7 @@ export default function Home() {
                 setBackgroundColor('#DFF0C4');
                 setBackgroundType('solid');
               }}
-              className="bg-white text-black transition-all duration-200"
+              className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
               style={{
                 width: '48px',
                 height: '48px',
@@ -1187,7 +1206,7 @@ export default function Home() {
                 setBackgroundColor('#FFF788');
                 setBackgroundType('solid');
               }}
-              className="bg-white text-black transition-all duration-200"
+              className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
               style={{
                 width: '48px',
                 height: '48px',
@@ -1235,7 +1254,7 @@ export default function Home() {
               onClick={() => {
                 setBackgroundType('gradient');
               }}
-              className="bg-white text-black transition-all duration-200"
+              className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
               style={{
                 width: '48px',
                 height: '48px',
@@ -1272,11 +1291,9 @@ export default function Home() {
       {/* X Account Button */}
       <motion.a
         href="https://x.com/itshassco"
-        target="_blank"
-        rel="noopener noreferrer"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="absolute bg-white text-black transition-all duration-200"
+        className="absolute bg-white text-black transition-all duration-200 cursor-pointer select-none"
         style={{
           width: isMobile && isLandscape ? '48px' : '64px',
           height: isMobile && isLandscape ? '36px' : '48px',
@@ -1306,7 +1323,7 @@ export default function Home() {
         onClick={toggleFullscreen}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="absolute bg-white text-black transition-all duration-200"
+        className="absolute bg-white text-black transition-all duration-200 cursor-pointer select-none"
         style={{
           width: isMobile && isLandscape ? '48px' : '64px',
           height: isMobile && isLandscape ? '36px' : '48px',
@@ -1346,7 +1363,7 @@ export default function Home() {
       {/* Clock Content */}
       {activeTab === 'clock' && (
         <motion.div 
-          className="flex items-center cursor-pointer" 
+          className="flex items-center cursor-pointer select-none" 
           style={{
             ...clockStyle,
             color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'white' : 'black',
@@ -1387,7 +1404,7 @@ export default function Home() {
         <div className="flex flex-col items-center" style={{ color: backgroundType === 'gradient' ? 'white' : (backgroundType === 'dark' ? 'white' : 'black'), transition: 'color 0.3s ease-in-out' }}>
           {/* Timer Display */}
           <div 
-            className="flex items-center mb-8"
+            className="flex items-center mb-8 select-none"
             style={{
               fontFamily: 'SF Pro Rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
               fontSize: isMobile && isLandscape ? 'clamp(80px, 8vw, 200px)' : 'clamp(120px, 12vw, 300px)',
@@ -1416,8 +1433,8 @@ export default function Home() {
 
       {/* Weather Temperature Box */}
       <motion.div 
-        className="absolute bg-white text-black transition-all duration-200 cursor-pointer"
-        onClick={getLocationAndWeather}
+        className="absolute bg-white text-black transition-all duration-200 cursor-pointer select-none"
+        onClick={handleWeatherClick}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         style={{
@@ -1443,11 +1460,16 @@ export default function Home() {
           textAlign: 'center',
           color: backgroundType === 'dark' ? 'white' : 'black'
         }}
-        title={weatherError ? 'Click to refresh weather' : weatherLocation ? `Weather in ${weatherLocation} - Click to refresh` : 'Click to refresh weather'}
+        title={isWeatherDebounced ? 'Please wait before refreshing again' : weatherError ? 'Click to refresh weather' : weatherLocation ? `Weather in ${weatherLocation} - Click to refresh` : 'Click to refresh weather'}
       >
         {weatherLoading ? (
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-xs">°C</span>
+          </div>
+        ) : isWeatherDebounced ? (
+          <div className="flex items-center gap-1">
+            <span className="text-xs">⏳</span>
             <span className="text-xs">°C</span>
           </div>
         ) : weatherError ? (
@@ -1512,7 +1534,7 @@ export default function Home() {
             }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="bg-white text-black transition-all duration-200"
+            className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
             style={{
               width: 'fit-content',
               height: '48px',
@@ -1540,7 +1562,7 @@ export default function Home() {
             }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="bg-white text-black transition-all duration-200"
+            className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
             style={{
               width: 'fit-content',
               height: '48px',
@@ -1568,7 +1590,7 @@ export default function Home() {
             }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="bg-white text-black transition-all duration-200"
+            className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
             style={{
               width: 'fit-content',
               height: '48px',
@@ -1601,7 +1623,7 @@ export default function Home() {
             }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="bg-white text-black transition-all duration-200"
+            className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
             style={{
               width: '48px',
               height: '48px',
@@ -1629,7 +1651,7 @@ export default function Home() {
             }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="bg-white text-black transition-all duration-200"
+            className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
             style={{
               width: '48px',
               height: '48px',
@@ -1655,7 +1677,7 @@ export default function Home() {
               onClick={startTimer}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-white transition-all duration-200"
+              className="bg-white transition-all duration-200 cursor-pointer select-none"
               style={{
                 width: 'fit-content',
                 height: '48px',
@@ -1684,7 +1706,7 @@ export default function Home() {
                 onClick={pauseTimer}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white text-black transition-all duration-200"
+                className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
                 style={{
                   width: '48px',
                   height: '48px',
@@ -1708,7 +1730,7 @@ export default function Home() {
                 onClick={endTimer}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white text-black transition-all duration-200"
+                className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
                 style={{
                   width: '48px',
                   height: '48px',
@@ -1735,7 +1757,7 @@ export default function Home() {
                 onClick={startTimer}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white text-black transition-all duration-200"
+                className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
                 style={{
                   width: '48px',
                   height: '48px',
@@ -1758,7 +1780,7 @@ export default function Home() {
                 onClick={endTimer}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="bg-white text-black transition-all duration-200"
+                className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
                 style={{
                   width: '48px',
                   height: '48px',
