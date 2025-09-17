@@ -40,11 +40,10 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#EBEBEB" />
+        <meta name="theme-color" content="#EBEBEB" id="theme-color-meta" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="CO'WATCH!" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
         {/* Preload SF Pro Rounded fonts - Only 3 weights */}
         <link
           rel="preload"

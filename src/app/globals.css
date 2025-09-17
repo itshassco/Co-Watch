@@ -33,6 +33,10 @@
   --background: #ffffff;
   --foreground: #171717;
   --font-family: 'SF Pro Rounded', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, system-ui, sans-serif;
+  --theme-background: #EBEBEB;
+  --theme-type: solid;
+  --theme-green: #DFF0C4;
+  --theme-yellow: #FFF788;
 }
 
 @theme inline {
@@ -82,16 +86,21 @@ body {
 }
 
 /* Allow both portrait and landscape on mobile devices */
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 768px), screen and (max-height: 768px) {
   html, body {
     width: 100vw;
     height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
     overflow: hidden;
+    position: fixed;
+    top: 0;
+    left: 0;
   }
 }
 
-/* Prevent zoom on mobile devices */
-@media screen and (max-width: 768px) {
+/* Prevent zoom and scrolling on mobile devices */
+@media screen and (max-width: 768px), screen and (max-height: 768px) {
   * {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -99,6 +108,16 @@ body {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    /* Prevent overscroll behavior */
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent pull-to-refresh and bounce scrolling */
+  body {
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
+    touch-action: none;
   }
   
   input, textarea {
@@ -143,5 +162,41 @@ body {
     padding-bottom: env(safe-area-inset-bottom) !important;
     padding-left: env(safe-area-inset-left) !important;
     padding-right: env(safe-area-inset-right) !important;
+  }
+}
+
+/* Consistent theme utilities for all screen sizes */
+.theme-background {
+  background: var(--theme-background, #EBEBEB);
+}
+
+.theme-gradient {
+  background: linear-gradient(180deg, #3477DF 0%, #738FE3 50%, #ACC2F5 100%);
+}
+
+.theme-dark {
+  background: #1a1a1a;
+}
+
+.theme-dark-gradient {
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+}
+
+/* Ensure consistent theme colors across mobile and desktop */
+@media screen and (max-width: 768px) {
+  .theme-background {
+    background: var(--theme-background, #EBEBEB) !important;
+  }
+  
+  .theme-gradient {
+    background: linear-gradient(180deg, #3477DF 0%, #738FE3 50%, #ACC2F5 100%) !important;
+  }
+  
+  .theme-dark {
+    background: #1a1a1a !important;
+  }
+  
+  .theme-dark-gradient {
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%) !important;
   }
 }

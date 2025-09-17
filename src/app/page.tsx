@@ -256,6 +256,41 @@ export default function Home() {
     }
   }, [backgroundType]);
 
+  // Update theme-color meta tag and CSS variables for consistent theming
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const themeColorMeta = document.getElementById('theme-color-meta') as HTMLMetaElement;
+      const root = document.documentElement;
+      
+      let themeColor = backgroundColor;
+      
+      if (backgroundType === 'dark') {
+        themeColor = '#1a1a1a';
+      } else if (backgroundType === 'gradient') {
+        themeColor = '#3477DF'; // Use the primary gradient color
+      }
+      
+      // Update meta tag for mobile browser theme
+      if (themeColorMeta) {
+        themeColorMeta.content = themeColor;
+      }
+      
+      // Update CSS custom properties for consistent theming
+      root.style.setProperty('--theme-background', backgroundColor);
+      root.style.setProperty('--theme-type', backgroundType);
+      
+      // Update status bar color for iOS PWA
+      const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]') as HTMLMetaElement;
+      if (statusBarMeta) {
+        if (backgroundType === 'dark') {
+          statusBarMeta.content = 'black-translucent';
+        } else {
+          statusBarMeta.content = 'default';
+        }
+      }
+    }
+  }, [backgroundColor, backgroundType]);
+
   // Save showSeconds to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -657,23 +692,98 @@ export default function Home() {
     };
   }, []);
 
-  // Mobile landscape optimizations
-  const isMobile = isClient && typeof window !== 'undefined' && window.innerWidth <= 768;
+  // Mobile detection - works for both orientations
+  const isMobile = isClient && typeof window !== 'undefined' && (
+    // Check if either dimension is mobile-sized (handles both orientations)
+    Math.min(window.innerWidth, window.innerHeight) <= 768 ||
+    // Also check for mobile user agent as backup
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  );
+
+  // Prevent scrolling on mobile
+  useEffect(() => {
+    if (isClient && isMobile) {
+      // Prevent scrolling on mobile
+      document.body.style.overflow = 'hidden';
+      document.body.style.height = '100vh';
+      document.body.style.maxHeight = '100vh';
+      document.documentElement.style.overflow = 'hidden';
+      document.documentElement.style.height = '100vh';
+      document.documentElement.style.maxHeight = '100vh';
+      
+      return () => {
+        // Cleanup when unmounting or when not mobile
+        document.body.style.overflow = '';
+        document.body.style.height = '';
+        document.body.style.maxHeight = '';
+        document.documentElement.style.overflow = '';
+        document.documentElement.style.height = '';
+        document.documentElement.style.maxHeight = '';
+      };
+    }
+  }, [isClient, isMobile]);
   const isLandscape = isClient && typeof window !== 'undefined' && window.innerWidth > window.innerHeight;
-  const isPortrait = isClient && typeof window !== 'undefined' && window.innerHeight > window.innerWidth && window.innerWidth <= 768;
+  const isPortrait = isClient && typeof window !== 'undefined' && window.innerHeight > window.innerWidth;
   
-  // More reliable portrait detection using multiple methods
-  const isPortraitMode = isClient && typeof window !== 'undefined' && (
+  // More reliable portrait detection - only for mobile devices
+  const isPortraitMode = isClient && typeof window !== 'undefined' && isMobile && (
     // Method 1: Basic dimension check
-    (window.innerHeight > window.innerWidth && window.innerWidth <= 768) ||
+    window.innerHeight > window.innerWidth ||
     // Method 2: Screen orientation API
     (window.screen && window.screen.orientation && (
       window.screen.orientation.angle === 0 || 
       window.screen.orientation.angle === 180
-    ) && window.innerWidth <= 768) ||
+    )) ||
     // Method 3: Media query check
-    (window.matchMedia && window.matchMedia('(orientation: portrait)').matches && window.innerWidth <= 768)
+    (window.matchMedia && window.matchMedia('(orientation: portrait)').matches)
   );
+
+  // Utility function to get consistent theme styles across all screen sizes
+  const getThemeStyles = () => {
+    const baseStyle = {
+      transition: 'background-color 0.3s ease-in-out',
+    };
+
+    if (backgroundType === 'dark') {
+      return {
+        ...baseStyle,
+        background: '#1a1a1a',
+        color: 'white'
+      };
+    } else if (backgroundType === 'gradient') {
+      return {
+        ...baseStyle,
+        background: 'transparent',
+        color: 'white'
+      };
+    } else {
+      return {
+        ...baseStyle,
+        background: backgroundColor,
+        color: 'black'
+      };
+    }
+  };
+
+  // Utility function to get gradient overlay styles
+  const getGradientOverlayStyles = () => {
+    const isGradientVisible = backgroundType === 'gradient' || backgroundType === 'dark';
+    
+    return {
+      position: 'fixed' as const,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: backgroundType === 'dark'
+        ? 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+        : 'linear-gradient(180deg, #3477DF 0%, #738FE3 50%, #ACC2F5 100%)',
+      opacity: isGradientVisible ? 1 : 0,
+      transition: 'opacity 0.3s ease-in-out',
+      pointerEvents: 'none' as const,
+      zIndex: -1
+    };
+  };
   
   // Debug logging
   if (isClient && typeof window !== 'undefined') {
@@ -690,7 +800,7 @@ export default function Home() {
   }
 
   const clockStyle = {
-    fontSize: isMobile && isLandscape ? 'clamp(80px, 8vw, 200px)' : 'clamp(120px, 12vw, 300px)',
+    fontSize: 'clamp(120px, 12vw, 300px)',
     fontWeight: '700',
     letterSpacing: '-0.06em'
   };
@@ -702,29 +812,12 @@ export default function Home() {
         <div 
           className="min-h-screen flex flex-col items-center justify-center" 
           style={{ 
-            background: backgroundType === 'dark' 
-              ? '#1a1a1a'
-              : (backgroundType === 'gradient' ? 'transparent' : backgroundColor),
+            ...getThemeStyles(),
             padding: '20px 16px'
           }}
         >
           {/* Gradient overlay */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: backgroundType === 'dark'
-                ? 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
-                : 'linear-gradient(180deg, #3477DF 0%, #738FE3 50%, #ACC2F5 100%)',
-              opacity: backgroundType === 'gradient' || backgroundType === 'dark' ? 1 : 0,
-              transition: 'opacity 0.3s ease-in-out',
-              pointerEvents: 'none',
-              zIndex: -1
-            }}
-          />
+          <div style={getGradientOverlayStyles()} />
           {/* Icon */}
           <div 
             className="mb-8"
@@ -775,7 +868,7 @@ export default function Home() {
             style={{
               fontSize: 'clamp(16px, 3vw, 20px)',
               fontWeight: '600',
-              color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
+              color: getThemeStyles().color === 'white' ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.6)',
               textAlign: 'center'
             }}
           >
@@ -789,36 +882,17 @@ export default function Home() {
     return (
       <div 
         className="min-h-screen flex items-center justify-center relative" 
-        style={{ 
-          background: backgroundType === 'dark' 
-            ? '#1a1a1a'
-            : (backgroundType === 'gradient' ? 'transparent' : backgroundColor)
-        }}
+        style={getThemeStyles()}
       >
         {/* Gradient overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: backgroundType === 'dark'
-              ? 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
-              : 'linear-gradient(180deg, #3477DF 0%, #738FE3 50%, #ACC2F5 100%)',
-            opacity: backgroundType === 'gradient' || backgroundType === 'dark' ? 1 : 0,
-            transition: 'opacity 0.3s ease-in-out',
-            pointerEvents: 'none',
-            zIndex: -1
-          }}
-        />
+        <div style={getGradientOverlayStyles()} />
         <div 
           className="flex items-center" 
           style={{
             fontSize: 'clamp(120px, 12vw, 300px)',
             fontWeight: '700',
             letterSpacing: '-0.06em',
-            color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'white' : 'black'
+            color: backgroundType === 'dark' ? 'white' : 'black'
           }}
         >
           CO&apos;WATCH!
@@ -827,74 +901,854 @@ export default function Home() {
     );
   }
 
-  // Mobile Portrait Screen - Show for any mobile device
+  // Mobile Screen - Full functional mobile version (portrait and landscape)
   if (isMobile) {
     return (
       <div 
-        className="min-h-screen flex flex-col items-center justify-center" 
+        className={`h-screen flex relative overflow-hidden ${isPortraitMode ? 'flex-col' : 'flex-row items-center justify-center'}`}
         style={{ 
-          background: '#EBEBEB', // Light gray background
-          padding: '20px 16px'
+          ...getThemeStyles(),
+          padding: isPortraitMode ? '20px' : '16px',
+          cursor: isFullscreen ? (showCursor ? 'default' : 'none') : 'default',
+          height: '100vh',
+          maxHeight: '100vh',
+          overflow: 'hidden',
+          position: 'relative',
+          // Mobile fullscreen styles
+          ...(isFullscreen ? {
+            position: 'fixed' as const,
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            height: '100vh',
+            width: '100vw'
+          } : {})
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={(e) => {
+          // Prevent scrolling on mobile
+          if (isMobile) {
+            e.preventDefault();
+          }
         }}
       >
-        {/* Icon */}
+        {/* Gradient overlay */}
+        <div style={getGradientOverlayStyles()} />
+
+        {/* Header Section */}
         <div 
-          className="mb-8"
+          className={`flex items-start ${isPortraitMode ? 'flex-col mb-8' : 'flex-row justify-between w-full max-w-none'}`}
           style={{
-            width: '120px',
-            height: '120px',
-            borderRadius: '50%',
-            backgroundColor: 'white',
-            border: '1px solid rgba(0, 0, 0, 0.05)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+            opacity: isFullscreen ? (showButtons ? 1 : 0) : 1,
+            visibility: isFullscreen ? (showButtons ? 'visible' : 'hidden') : 'visible',
+            transition: 'opacity 0.3s ease-in-out, visibility 0.3s ease-in-out',
+            ...(isPortraitMode ? {} : { position: 'absolute', top: '16px', left: '16px', right: '16px', zIndex: 10 })
+          }}
+        >
+
+          {/* Top Controls Row - Theme Button, Tabs, X Button */}
+          <div className={`flex items-center ${isPortraitMode ? 'justify-between w-full max-w-sm mb-4' : 'gap-4'}`}>
+            {/* Theme Settings Button */}
+            <motion.button
+              onClick={() => setShowThemeButtons(!showThemeButtons)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+              style={{ 
+                width: '64px',
+                height: '48px',
+                borderRadius: '200px',
+                backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}
-        >
-          <svg 
-            width="64" 
-            height="64" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path 
-              fillRule="evenodd" 
-              clipRule="evenodd" 
-              d="M10.2929 1.29289C10.6834 0.902369 11.3166 0.902369 11.7071 1.29289L14.7071 4.29289C15.0976 4.68342 15.0976 5.31658 14.7071 5.70711L11.7071 8.70711C11.3166 9.09763 10.6834 9.09763 10.2929 8.70711C9.90237 8.31658 9.90237 7.68342 10.2929 7.29289L11.5858 6H10C6.68629 6 4 8.68629 4 12C4 13.6352 4.65279 15.1159 5.71424 16.1991C6.10079 16.5935 6.09436 17.2267 5.6999 17.6132C5.30544 17.9998 4.6723 17.9933 4.28576 17.5989C2.87283 16.157 2 14.1794 2 12C2 7.58172 5.58172 4 10 4H11.5858L10.2929 2.70711C9.90237 2.31658 9.90237 1.68342 10.2929 1.29289ZM18.3001 6.38677C18.6946 6.00023 19.3277 6.00665 19.7142 6.40111C21.1272 7.84299 22 9.82056 22 12C22 16.4183 18.4183 20 14 20H12.4142L13.7071 21.2929C14.0976 21.6834 14.0976 22.3166 13.7071 22.7071C13.3166 23.0976 12.6834 23.0976 12.2929 22.7071L9.29289 19.7071C8.90237 19.3166 8.90237 18.6834 9.29289 18.2929L12.2929 15.2929C12.6834 14.9024 13.3166 14.9024 13.7071 15.2929C14.0976 15.6834 14.0976 16.3166 13.7071 16.7071L12.4142 18H14C17.3137 18 20 15.3137 20 12C20 10.3648 19.3472 8.88411 18.2858 7.80091C17.8992 7.40645 17.9056 6.77332 18.3001 6.38677Z" 
-              fill="black"
-            />
+              title="Theme Settings"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fillRule="evenodd" clipRule="evenodd" d="M2 12C2 6.71457 6.51697 2.5 12 2.5C17.483 2.5 22 6.71457 22 12C22 13.8878 21.4937 15.1519 20.4345 15.8123C19.4491 16.4266 18.2002 16.3605 17.1496 16.2236C16.7813 16.1757 16.397 16.1121 16.0307 16.0515C15.8617 16.0235 15.6965 15.9962 15.5384 15.9713C15.0184 15.8895 14.5499 15.8295 14.1335 15.8234C13.298 15.8112 12.8925 16.0091 12.671 16.4526C12.539 16.7171 12.5395 17.0363 12.6858 17.4705C12.8149 17.8538 13.0214 18.2277 13.2435 18.63C13.2828 18.7012 13.3226 18.7734 13.3626 18.8465C13.4857 19.0721 13.6169 19.3217 13.7077 19.5624C13.7926 19.7875 13.8875 20.117 13.8161 20.466C13.7303 20.8858 13.4434 21.1713 13.0891 21.3241C12.7768 21.4588 12.3992 21.5 12 21.5C6.51697 21.5 2 17.2854 2 12ZM10.25 6.25C9.42157 6.25 8.75 6.92157 8.75 7.75C8.75 8.57843 9.42157 9.25 10.25 9.25C11.0784 9.25 11.75 8.57843 11.75 7.75C11.75 6.92157 11.0784 6.25 10.25 6.25ZM7.25 10.5C6.42157 10.5 5.75 11.1716 5.75 12C5.75 12.8284 6.42157 13.5 7.25 13.5C8.07843 13.5 8.75 12.8284 8.75 12C8.75 11.1716 8.07843 10.5 7.25 10.5ZM15.25 7.75C14.4216 7.75 13.75 8.42157 13.75 9.25C13.75 10.0784 14.4216 10.75 15.25 10.75C16.0784 10.75 16.75 10.0784 16.75 9.25C16.75 8.42157 16.0784 7.75 15.25 7.75Z" fill={backgroundType === 'dark' ? "white" : "black"}/>
+              </svg>
+            </motion.button>
+
+            {/* Tab Navigation */}
+            <div 
+              className="relative inline-flex items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground"
+              style={{
+                backgroundColor: backgroundType === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                padding: '6px',
+                borderRadius: '24px',
+                height: '48px'
+              }}
+            >
+              {/* Sliding Background */}
+              <motion.div
+                className="absolute rounded-md"
+                style={{
+                  backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                  borderRadius: '200px',
+                  border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                  boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                  left: 0,
+                  top: 0
+                }}
+                animate={{
+                  width: activeTab === 'clock' ? `${tabDimensions.clock.width}px` : `${tabDimensions.timer.width}px`,
+                  height: '36px',
+                  left: activeTab === 'clock' ? `${tabDimensions.clock.left}px` : `${tabDimensions.timer.left}px`,
+                  top: '6px',
+                  scale: 1
+                }}
+                initial={{
+                  width: activeTab === 'clock' ? `${tabDimensions.clock.width}px` : `${tabDimensions.timer.width}px`,
+                  height: '36px',
+                  left: activeTab === 'clock' ? `${tabDimensions.clock.left}px` : `${tabDimensions.timer.left}px`,
+                  top: '6px',
+                  scale: 0.95
+                }}
+                transition={{
+                  type: "spring",
+                  duration: 0.48,
+                  stiffness: 300,
+                  damping: 25,
+                  mass: 1
+                }}
+              />
+              
+              <motion.button
+                id="clock-tab"
+                onClick={() => setActiveTab('clock')}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none"
+                style={{
+                  color: (backgroundType === 'gradient' && activeTab === 'clock') ? 'black' : (backgroundType === 'gradient' || backgroundType === 'dark') ? 'white' : 'black',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  padding: '6px 12px 4px 12px',
+                  opacity: activeTab === 'clock' ? 1 : 0.5,
+                  transition: 'opacity 0.2s ease-in-out, color 0.3s ease-in-out'
+                }}
+              >
+                Watch
+              </motion.button>
+              <motion.button
+                id="timer-tab"
+                onClick={() => setActiveTab('timer')}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none"
+                style={{
+                  color: (backgroundType === 'gradient' && activeTab === 'timer') ? 'black' : (backgroundType === 'gradient' || backgroundType === 'dark') ? 'white' : 'black',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  padding: '6px 12px 4px 12px',
+                  opacity: activeTab === 'timer' ? 1 : 0.5,
+                  transition: 'opacity 0.2s ease-in-out, color 0.3s ease-in-out'
+                }}
+              >
+                Focus
+              </motion.button>
+            </div>
+
+            {/* X Account Button */}
+            <motion.a
+              href="https://x.com/itshassco"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+              style={{
+                width: '64px',
+                height: '48px',
+                borderRadius: '200px',
+                backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none'
+              }}
+              title="Follow @itshassco on X"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.4033 3.5H20.2852L13.989 10.701L21.396 20.5H15.5964L11.054 14.557L5.85637 20.5H2.97269L9.70709 12.7977L2.60156 3.5H8.54839L12.6544 8.93215L17.4033 3.5ZM16.3918 18.7738H17.9887L7.68067 5.13549H5.96702L16.3918 18.7738Z" fill={backgroundType === 'dark' ? "white" : "black"}/>
           </svg>
+            </motion.a>
         </div>
 
-        {/* Co'Watch! Title */}
-        <div 
-          className="mb-1"
+          {/* Theme Buttons - Show when settings is clicked */}
+          <AnimatePresence>
+            {showThemeButtons && (
+              <motion.div 
+                className="flex flex-wrap justify-start gap-3 mb-4" 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                {/* Light Gray Theme */}
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.15, delay: 0 }}
+                  onClick={() => {
+                    setBackgroundColor('#EBEBEB');
+                    setBackgroundType('solid');
+                  }}
+                  className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '200px',
+                    border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                    position: 'relative'
+                  }}
+                  title="Light Gray Background"
+                >
+                  <div 
           style={{
-            fontSize: 'clamp(32px, 8vw, 48px)',
+                      width: backgroundColor === '#EBEBEB' ? '30px' : '20px',
+                      height: backgroundColor === '#EBEBEB' ? '30px' : '20px',
+                      borderRadius: '50%',
+                      backgroundColor: '#EBEBEB',
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  />
+                </motion.button>
+
+                {/* Dark Theme */}
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.15, delay: 0.05 }}
+                  onClick={() => setBackgroundType('dark')}
+                  className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '200px',
+                    border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                    position: 'relative'
+                  }}
+                  title="Dark Theme"
+                >
+                  <div 
+                    style={{
+                      width: backgroundType === 'dark' ? '30px' : '20px',
+                      height: backgroundType === 'dark' ? '30px' : '20px',
+                      borderRadius: '50%',
+                      backgroundColor: backgroundType === 'dark' ? '#1a1a1a' : '#2a2a2a',
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  />
+                </motion.button>
+
+                {/* Yellow Theme */}
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.15, delay: 0.1 }}
+                  onClick={() => {
+                    setBackgroundColor('#FFF788');
+                    setBackgroundType('solid');
+                  }}
+                  className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '200px',
+                    border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                    position: 'relative'
+                  }}
+                  title="Light Yellow Background"
+                >
+                  <div 
+                    style={{
+                      width: backgroundColor === '#FFF788' ? '30px' : '20px',
+                      height: backgroundColor === '#FFF788' ? '30px' : '20px',
+                      borderRadius: '50%',
+                      backgroundColor: '#FFF788',
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  />
+                </motion.button>
+
+                {/* Green Theme */}
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.15, delay: 0.15 }}
+                  onClick={() => {
+                    setBackgroundColor('#DFF0C4');
+                    setBackgroundType('solid');
+                  }}
+                  className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '200px',
+                    border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                    position: 'relative'
+                  }}
+                  title="Light Green Background"
+                >
+                  <div 
+                    style={{
+                      width: backgroundColor === '#DFF0C4' ? '30px' : '20px',
+                      height: backgroundColor === '#DFF0C4' ? '30px' : '20px',
+                      borderRadius: '50%',
+                      backgroundColor: '#DFF0C4',
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  />
+                </motion.button>
+
+                {/* Gradient Theme */}
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ duration: 0.15, delay: 0.2 }}
+                  onClick={() => setBackgroundType('gradient')}
+                  className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '200px',
+                    border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                    position: 'relative'
+                  }}
+                  title="Blue Gradient Background"
+                >
+                  <div 
+                    style={{
+                      width: backgroundType === 'gradient' ? '30px' : '20px',
+                      height: backgroundType === 'gradient' ? '30px' : '20px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(180deg, #3477DF 0%, #738FE3 50%, #ACC2F5 100%)',
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  />
+                </motion.button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Absolute positioned title - 42px above clock */}
+        <div 
+          className="fixed"
+          style={{
+            top: 'calc(45vh - 40px - 42px)', // 45% of viewport height minus half of 80px clock height minus 42px gap
+            left: '50vw',
+            transform: 'translate(-50%, -50%)',
+            color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'white' : 'black',
+            fontSize: 'clamp(28px, 7vw, 36px)',
             fontWeight: '900',
             letterSpacing: '-0.02em',
-            color: 'black',
-            textAlign: 'center'
+            transition: 'color 0.3s ease-in-out',
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+            zIndex: 10
           }}
         >
           CO&apos;WATCH!
         </div>
 
-        {/* Rotate Phone Instruction */}
+        {/* Clock Content */}
+        {activeTab === 'clock' && (
         <div 
+            className={`select-none ${isPortraitMode ? 'fixed' : 'flex-1 flex items-center justify-center'}`}
+            suppressHydrationWarning={true}
           style={{
-            fontSize: 'clamp(18px, 4vw, 24px)',
+              ...(isPortraitMode ? {
+                top: '45vh',
+                left: '50vw',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 10
+              } : {})
+            }}
+          >
+            {/* Time Display - Viewport Center */}
+            <div 
+              className="flex items-center"
+          style={{
+                fontSize: isPortraitMode ? '80px' : 'clamp(60px, 8vw, 120px)',
+                fontWeight: '700',
+                letterSpacing: '-0.06em',
+                color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'white' : 'black',
+                transition: 'color 0.3s ease-in-out'
+              }}
+            >
+              <SlidingNumber 
+                number={hours} 
+                padStart 
+                transition={{ stiffness: 200, damping: 15, mass: 0.8 }}
+              />
+              <span className="mx-1">:</span>
+              <SlidingNumber 
+                number={minutes} 
+                padStart 
+                transition={{ stiffness: 200, damping: 15, mass: 0.8 }}
+              />
+              <span className="ml-4" style={{ fontSize: isPortraitMode ? '80px' : 'clamp(60px, 8vw, 120px)' }}>{ampm}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Focus Timer Content */}
+        {activeTab === 'timer' && (
+          <div 
+            className={`select-none ${isPortraitMode ? 'fixed' : 'flex-1 flex items-center justify-center'}`}
+            style={{
+              ...(isPortraitMode ? {
+                top: '45vh',
+                left: '50vw',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 10
+              } : {})
+            }}
+          >
+            {/* Timer Display - Viewport Center */}
+            <div 
+              className="flex items-center"
+              style={{
+                fontSize: isPortraitMode ? '80px' : 'clamp(60px, 8vw, 120px)',
+                fontWeight: '700',
+                letterSpacing: '-0.06em',
+                color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'white' : 'black',
+                transition: 'color 0.3s ease-in-out'
+              }}
+            >
+              <SlidingNumber 
+                number={Math.floor(timeLeft / 60)} 
+                padStart 
+                transition={{ stiffness: 200, damping: 15, mass: 0.8 }}
+              />
+              <span className="mx-1">:</span>
+              <SlidingNumber 
+                number={timeLeft % 60} 
+                padStart 
+                transition={{ stiffness: 200, damping: 15, mass: 0.8 }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Spacer for layout - Only needed in portrait mode */}
+        {isPortraitMode && <div className="flex-1"></div>}
+
+        {/* Date positioned below clock */}
+        {activeTab === 'clock' && (
+          <div 
+            className={isPortraitMode ? "fixed" : "absolute bottom-8"}
+            style={{
+              ...(isPortraitMode ? {
+                top: 'calc(45vh + 40px + 32px)', // Position 32px below the 45vh positioned clock
+                left: '50vw',
+                transform: 'translateX(-50%)',
+                zIndex: 10
+              } : {
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 10
+              })
+            }}
+          >
+            {/* Date */}
+            <div 
+              style={{
+                fontSize: '24px',
             fontWeight: '600',
-            color: 'rgba(0, 0, 0, 0.7)',
+                color: getThemeStyles().color === 'white' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.7)',
+                transition: 'color 0.3s ease-in-out',
+                textAlign: 'center'
+              }}
+              suppressHydrationWarning={true}
+            >
+              {formatDate(time)}
+            </div>
+          </div>
+        )}
+
+        {/* Preset Timer Buttons - Same position as date in Watch tab */}
+        {activeTab === 'timer' && (!isRunning && !isPaused) && (
+          <div 
+            className={isPortraitMode ? "fixed" : "absolute top-1/2 mt-16"}
+            style={{
+              ...(isPortraitMode ? {
+                top: 'calc(45vh + 40px + 32px)', // Same position as date - 32px below the timer
+                left: '50vw',
+                transform: 'translateX(-50%)',
+                zIndex: 10
+              } : {
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 10
+              })
+            }}
+          >
+            <div className="flex items-center justify-center gap-3">
+              <motion.button
+                onClick={() => {
+                  setTimer(5);
+                  setTimerType('focus');
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                style={{
+                  width: 'fit-content',
+                  height: '48px',
+                  borderRadius: '200px',
+                  border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                  boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  padding: '6px 18px 4px 18px',
             textAlign: 'center',
-            maxWidth: '280px',
-            lineHeight: '1.4'
-          }}
-        >
-          Rotate Your Phone
+                  whiteSpace: 'nowrap',
+                  backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                  color: timerDuration === 5 * 60 ? (backgroundType === 'dark' ? 'white' : 'black') : (backgroundType === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)')
+                }}
+              >
+                5 Min
+              </motion.button>
+              <motion.button
+                onClick={() => {
+                  setTimer(10);
+                  setTimerType('focus');
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                style={{
+                  width: 'fit-content',
+                  height: '48px',
+                  borderRadius: '200px',
+                  border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                  boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  padding: '6px 18px 4px 18px',
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                  backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                  color: timerDuration === 10 * 60 ? (backgroundType === 'dark' ? 'white' : 'black') : (backgroundType === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)')
+                }}
+              >
+                10 Min
+              </motion.button>
+              <motion.button
+                onClick={() => {
+                  setTimer(25);
+                  setTimerType('focus');
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                style={{
+                  width: 'fit-content',
+                  height: '48px',
+                  borderRadius: '200px',
+                  border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                  boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  padding: '6px 18px 4px 18px',
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                  backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                  color: timerDuration === 25 * 60 ? (backgroundType === 'dark' ? 'white' : 'black') : (backgroundType === 'dark' ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)')
+                }}
+              >
+                25 Min
+              </motion.button>
         </div>
+          </div>
+        )}
+
+        {/* Bottom Controls Row - (-), Start Focus, (+) at bottom center */}
+        {activeTab === 'timer' && (
+          <div 
+            className={`flex items-center justify-center gap-3 w-full max-w-sm ${isPortraitMode ? 'fixed' : 'absolute bottom-8'}`}
+            style={{
+              ...(isPortraitMode ? {
+                bottom: '60px', // Position at bottom of screen
+                left: '50vw',
+                transform: 'translateX(-50%)',
+                zIndex: 10
+              } : {
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 10
+              })
+            }}
+          >
+
+            {/* Bottom Controls Row - (-), Start Focus, (+) - Only show when not running/paused */}
+            {(!isRunning && !isPaused) && (
+              <>
+                <motion.button
+                  onClick={() => {
+                    const currentMinutes = Math.floor(timerDuration / 60);
+                    if (currentMinutes > 1) {
+                      setTimer(currentMinutes - 1);
+                      setTimerType('focus');
+                    }
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '200px',
+                    border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white'
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fillRule="evenodd" clipRule="evenodd" d="M6 12C6 11.4477 6.44772 11 7 11H17C17.5523 11 18 11.4477 18 12C18 12.5523 17.5523 13 17 13H7C6.44772 13 6 12.5523 6 12Z" fill="#FF6800"/>
+                  </svg>
+                </motion.button>
+
+                <motion.button
+                  onClick={startTimer}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-white transition-all duration-200 cursor-pointer select-none"
+                  style={{
+                    width: 'fit-content',
+                    height: '48px',
+                    borderRadius: '200px',
+                    border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    padding: '6px 18px 4px 18px',
+                    textAlign: 'center',
+                    backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
+                    color: '#00B2FF'
+                  }}
+                >
+                  Start Focus
+                </motion.button>
+
+                <motion.button
+                  onClick={() => {
+                    const currentMinutes = Math.floor(timerDuration / 60);
+                    if (currentMinutes < 60) {
+                      setTimer(currentMinutes + 1);
+                      setTimerType('focus');
+                    }
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '200px',
+                    border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                    boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white'
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fillRule="evenodd" clipRule="evenodd" d="M12 6C12.5523 6 13 6.44772 13 7V11H17C17.5523 11 18 11.4477 18 12C18 12.5523 17.5523 13 17 13H13V17C13 17.5523 12.5523 18 12 18C11.4477 18 11 17.5523 11 17V13H7C6.44772 13 6 12.5523 6 12C6 11.4477 6.44772 11 7 11H11V7C11 6.44772 11.4477 6 12 6Z" fill="#00CA48"/>
+                  </svg>
+                </motion.button>
+              </>
+            )}
+
+            {/* Running/Paused Controls */}
+            {isRunning && (
+              <div className="flex items-center gap-4">
+                <motion.button
+                    onClick={pauseTimer}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '200px',
+                      border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                      boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white'
+                    }}
+                    title="Pause"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 6C4 4.34315 5.34315 3 7 3C8.65685 3 10 4.34315 10 6V18C10 19.6569 8.65685 21 7 21C5.34315 21 4 19.6569 4 18V6Z" fill="#00CA48"/>
+                      <path d="M14 6C14 4.34315 15.3431 3 17 3C18.6569 3 20 4.34315 20 6V18C20 19.6569 18.6569 21 17 21C15.3431 21 14 19.6569 14 18V6Z" fill="#00CA48"/>
+                    </svg>
+                  </motion.button>
+                  
+                  <motion.button
+                    onClick={endTimer}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '200px',
+                      border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                      boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white'
+                    }}
+                    title="End"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M15.2413 3H8.7587C7.95374 2.99999 7.28937 2.99998 6.74818 3.04419C6.18608 3.09012 5.66937 3.18868 5.18404 3.43598C4.43139 3.81947 3.81947 4.43139 3.43598 5.18404C3.18868 5.66937 3.09012 6.18608 3.04419 6.74818C2.99998 7.28937 2.99999 7.95372 3 8.75869V15.2413C2.99999 16.0463 2.99998 16.7106 3.04419 17.2518C3.09012 17.8139 3.18868 18.3306 3.43598 18.816C3.81947 19.5686 4.43139 20.1805 5.18404 20.564C5.66937 20.8113 6.18608 20.9099 6.74818 20.9558C7.28937 21 7.95372 21 8.75868 21H15.2413C16.0463 21 16.7106 21 17.2518 20.9558C17.8139 20.9099 18.3306 20.8113 18.816 20.564C19.5686 20.1805 20.1805 19.5686 20.564 18.816C20.8113 18.3306 20.9099 17.8139 20.9558 17.2518C21 16.7106 21 16.0463 21 15.2413V8.75868C21 7.95372 21 7.28936 20.9558 6.74818C20.9099 6.18608 20.8113 5.66937 20.564 5.18404C20.1805 4.43139 19.5686 3.81947 18.816 3.43598C18.3306 3.18868 17.8139 3.09012 17.2518 3.04419C16.7106 2.99998 16.0463 2.99999 15.2413 3Z" fill="#FF2B3A"/>
+                    </svg>
+                </motion.button>
+              </div>
+            )}
+            
+            {isPaused && (
+              <div className="flex items-center gap-4">
+                <motion.button
+                    onClick={startTimer}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '200px',
+                      border: '1px solid rgba(0, 0, 0, 0.05)',
+                      boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingLeft: '4px'
+                    }}
+                    title="Continue"
+                  >
+                    <svg width="18" height="20" viewBox="0 0 18 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M6.19671 0.718275C3.53683 -1.02965 0 0.878304 0 4.0611V15.9387C0 19.1215 3.53684 21.0294 6.19672 19.2815L15.234 13.3427C17.6384 11.7627 17.6384 8.23709 15.234 6.65706L6.19671 0.718275Z" fill="#00B2FF"/>
+                    </svg>
+                  </motion.button>
+                  
+                  <motion.button
+                    onClick={endTimer}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '200px',
+                      border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
+                      boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white'
+                    }}
+                    title="End"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M15.2413 3H8.7587C7.95374 2.99999 7.28937 2.99998 6.74818 3.04419C6.18608 3.09012 5.66937 3.18868 5.18404 3.43598C4.43139 3.81947 3.81947 4.43139 3.43598 5.18404C3.18868 5.66937 3.09012 6.18608 3.04419 6.74818C2.99998 7.28937 2.99999 7.95372 3 8.75869V15.2413C2.99999 16.0463 2.99998 16.7106 3.04419 17.2518C3.09012 17.8139 3.18868 18.3306 3.43598 18.816C3.81947 19.5686 4.43139 20.1805 5.18404 20.564C5.66937 20.8113 6.18608 20.9099 6.74818 20.9558C7.28937 21 7.95372 21 8.75868 21H15.2413C16.0463 21 16.7106 21 17.2518 20.9558C17.8139 20.9099 18.3306 20.8113 18.816 20.564C19.5686 20.1805 20.1805 19.5686 20.564 18.816C20.8113 18.3306 20.9099 17.8139 20.9558 17.2518C21 16.7106 21 16.0463 21 15.2413V8.75868C21 7.95372 21 7.28936 20.9558 6.74818C20.9099 6.18608 20.8113 5.66937 20.564 5.18404C20.1805 4.43139 19.5686 3.81947 18.816 3.43598C18.3306 3.18868 17.8139 3.09012 17.2518 3.04419C16.7106 2.99998 16.0463 2.99999 15.2413 3Z" fill="#FF2B3A"/>
+                    </svg>
+                </motion.button>
+              </div>
+            )}
+          </div>
+        )}
+
+
       </div>
     );
   }
@@ -905,14 +1759,11 @@ export default function Home() {
       key={orientationKey}
       className={`min-h-screen flex items-center justify-center relative ${isMobile && isFullscreen ? 'mobile-fullscreen' : ''}`}
       style={{ 
-        backgroundColor: backgroundType === 'dark' 
-          ? '#1a1a1a'
-          : (backgroundType === 'gradient' ? 'transparent' : backgroundColor),
-        padding: isMobile && isLandscape ? '20px' : '36px',
-        transition: 'background-color 0.3s ease-in-out',
+        ...getThemeStyles(),
+        padding: '36px',
         cursor: isFullscreen ? (showCursor ? 'default' : 'none') : 'default',
-        minHeight: isMobile && isLandscape ? '100vh' : '100vh',
-        width: isMobile && isLandscape ? '100vw' : '100%',
+        minHeight: '100vh',
+        width: '100%',
         // Mobile fullscreen styles
         ...(isMobile && isFullscreen ? {
           position: 'fixed' as const,
@@ -930,22 +1781,7 @@ export default function Home() {
       onTouchStart={handleTouchStart}
     >
       {/* Gradient overlay */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: backgroundType === 'dark'
-            ? 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
-            : 'linear-gradient(180deg, #3477DF 0%, #738FE3 50%, #ACC2F5 100%)',
-          opacity: backgroundType === 'gradient' || backgroundType === 'dark' ? 1 : 0,
-          transition: 'opacity 0.3s ease-in-out',
-          pointerEvents: 'none',
-          zIndex: -1
-        }}
-      />
+      <div style={getGradientOverlayStyles()} />
       {/* Title */}
       <div 
         className="absolute top-8 left-1/2 transform -translate-x-1/2"
@@ -1025,7 +1861,7 @@ export default function Home() {
             whileTap={{ scale: 0.95 }}
             className="relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none"
             style={{
-              color: backgroundType === 'gradient' && activeTab !== 'clock' ? 'white' : (backgroundType === 'dark' ? 'white' : 'black'),
+              color: (backgroundType === 'gradient' && activeTab === 'clock') ? 'black' : (backgroundType === 'gradient' || backgroundType === 'dark') ? 'white' : 'black',
               fontSize: '16px',
               fontWeight: '600',
               padding: '6px 12px 4px 12px',
@@ -1042,7 +1878,7 @@ export default function Home() {
             whileTap={{ scale: 0.95 }}
             className="relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 cursor-pointer select-none"
             style={{
-              color: backgroundType === 'gradient' && activeTab !== 'timer' ? 'white' : (backgroundType === 'dark' ? 'white' : 'black'),
+              color: (backgroundType === 'gradient' && activeTab === 'timer') ? 'black' : (backgroundType === 'gradient' || backgroundType === 'dark') ? 'white' : 'black',
               fontSize: '16px',
               fontWeight: '600',
               padding: '6px 12px 4px 12px',
@@ -1062,8 +1898,8 @@ export default function Home() {
           whileTap={{ scale: 0.95 }}
           className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
           style={{ 
-            width: isMobile && isLandscape ? '48px' : '64px',
-            height: isMobile && isLandscape ? '36px' : '48px',
+            width: '64px',
+            height: '48px',
             borderRadius: '200px',
             backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
             border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
@@ -1202,7 +2038,7 @@ export default function Home() {
                 delay: 0.1
               }}
               onClick={() => {
-                setBackgroundColor('#EBEBEB');
+                setBackgroundColor('#DFF0C4');
                 setBackgroundType('solid');
               }}
               className="bg-white text-black transition-all duration-200 cursor-pointer select-none"
@@ -1218,14 +2054,14 @@ export default function Home() {
                 backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
                 position: 'relative'
               }}
-              title="Light Gray Background"
+              title="Light Green Background"
             >
               <div 
                 style={{
-                  width: backgroundColor === '#EBEBEB' ? '30px' : '20px',
-                  height: backgroundColor === '#EBEBEB' ? '30px' : '20px',
+                  width: backgroundColor === '#DFF0C4' ? '30px' : '20px',
+                  height: backgroundColor === '#DFF0C4' ? '30px' : '20px',
                   borderRadius: '50%',
-                  backgroundColor: '#EBEBEB',
+                  backgroundColor: '#DFF0C4',
                   position: 'absolute',
                   top: '50%',
                   left: '50%',
@@ -1343,8 +2179,8 @@ export default function Home() {
         whileTap={{ scale: 0.95 }}
         className="absolute bg-white text-black transition-all duration-200 cursor-pointer select-none"
         style={{
-          width: isMobile && isLandscape ? '48px' : '64px',
-          height: isMobile && isLandscape ? '36px' : '48px',
+          width: '64px',
+          height: '48px',
           borderRadius: '200px',
           backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
           border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
@@ -1352,8 +2188,8 @@ export default function Home() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          top: isMobile && isLandscape ? '20px' : '36px',
-          right: isMobile && isLandscape ? '88px' : '112px',
+          top: '36px',
+          right: '112px',
           opacity: isFullscreen ? (showButtons ? 1 : 0) : 1,
           visibility: isFullscreen ? (showButtons ? 'visible' : 'hidden') : 'visible',
           transition: 'opacity 0.3s ease-in-out, visibility 0.3s ease-in-out',
@@ -1373,8 +2209,8 @@ export default function Home() {
         whileTap={{ scale: 0.95 }}
         className="absolute bg-white text-black transition-all duration-200 cursor-pointer select-none"
         style={{
-          width: isMobile && isLandscape ? '48px' : '64px',
-          height: isMobile && isLandscape ? '36px' : '48px',
+          width: '64px',
+          height: '48px',
           borderRadius: '200px',
           backgroundColor: backgroundType === 'dark' ? '#2a2a2a' : 'white',
           border: backgroundType === 'dark' ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.05)',
@@ -1382,8 +2218,8 @@ export default function Home() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          top: isMobile && isLandscape ? '20px' : '36px',
-          right: isMobile && isLandscape ? '20px' : '36px',
+          top: '36px',
+          right: '36px',
           opacity: isFullscreen ? (showButtons ? 1 : 0) : 1,
           visibility: isFullscreen ? (showButtons ? 'visible' : 'hidden') : 'visible',
           transition: 'opacity 0.3s ease-in-out, visibility 0.3s ease-in-out'
@@ -1450,12 +2286,12 @@ export default function Home() {
 
       {/* Focus Timer Content */}
       {activeTab === 'timer' && (
-        <div className="flex flex-col items-center" style={{ color: backgroundType === 'gradient' ? 'white' : (backgroundType === 'dark' ? 'white' : 'black'), transition: 'color 0.3s ease-in-out' }}>
+        <div className="flex flex-col items-center" style={{ color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'white' : 'black', transition: 'color 0.3s ease-in-out' }}>
           {/* Timer Display */}
           <div 
             className="flex items-center mb-8 select-none"
             style={{
-              fontSize: isMobile && isLandscape ? 'clamp(80px, 8vw, 200px)' : 'clamp(120px, 12vw, 300px)',
+              fontSize: 'clamp(120px, 12vw, 300px)',
               fontWeight: '700',
               letterSpacing: '-0.06em',
               color: backgroundType === 'gradient' || backgroundType === 'dark' ? 'white' : 'black',
