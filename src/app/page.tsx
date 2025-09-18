@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SlidingNumber } from '@/components/ui/sliding-number';
+import { Analytics } from "@vercel/analytics/next";
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
